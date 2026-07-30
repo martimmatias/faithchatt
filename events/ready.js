@@ -1,6 +1,5 @@
 const config = require("../config.json");
-const { Routes } = require("discord.js");
-const { REST } = require("@discordjs/rest");
+const { Routes, REST } = require("discord.js");
 
 async function loadCommands(client) {
     const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
