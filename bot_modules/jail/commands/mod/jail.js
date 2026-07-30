@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionsBitField, RESTJSONErrorCodes } = require("discord.js");
-const { textId, rolesId, errorMessages } = require("../../../../utils/variables.js");
+const { textId, errorMessages } = require("../../../../utils/variables.js");
 const jailModel = require("../../models/jailsystem.js");
 const embedFactory = require("../../../../utils/embedFactory.js");
 const jailSystem = require("../../utils/jail_system.js");
@@ -29,13 +29,7 @@ module.exports = {
             });
         }
 
-        const unverifiedRole = interaction.guild.roles.cache.get(rolesId.unverified);
-        const mutedRole = interaction.guild.roles.cache.get(rolesId.muted);
-
         const modLogChannel = interaction.guild.channels.cache.get(textId.modLog);
-
-        // Get all roles from user except muted
-        const userRoles = jailedMember.roles.cache.filter(role => role.id !== mutedRole.id && role.id !== unverifiedRole.id && role.managed !== true);
 
         const jailData = await jailModel.findOne({ userId: jailedMember.user.id });
         if (!jailData) {
@@ -50,8 +44,7 @@ module.exports = {
                     ephemeral: true,
                 });
 
-                await jailedMember.roles.add(mutedRole);
-                await jailedMember.roles.remove(userRoles);
+                const removedRoleIds = await jailSystem.removeRoles(interaction.guild, jailedMember);
 
                 jailChannel = await jailSystem.createJailChannel(interaction.guild, jailedMember);
 
@@ -59,6 +52,7 @@ module.exports = {
                     userId: jailedMember.user.id,
                     userName: jailedMember.user.tag,
                     textChannel: jailChannel.id,
+                    removedRoles: removedRoleIds,
                 });
                 newJailData.save();
 
@@ -130,6 +124,49 @@ module.exports = {
                         embedFactory.createErrorEmbed(errorMessages.internalError),
                     ],
                 }).catch(err => console.error(err));
+            }
+        }
+        else {
+            const existingChannel = interaction.guild.channels.cache.get(jailData.textChannel);
+
+            if (existingChannel) {
+                return interaction.reply({
+                    embeds: [
+                        embedFactory.createErrorEmbed(errorMessages.userAlreadyJailed),
+                    ],
+                    ephemeral: true,
+                });
+            }
+
+            // The jail record exists but its ticket channel is gone (manually deleted, bot downtime, etc).
+            // Recreate the channel instead of silently doing nothing, since the member is still muted.
+            try {
+                const jailChannel = await jailSystem.createJailChannel(interaction.guild, jailedMember);
+                jailData.textChannel = jailChannel.id;
+                await jailData.save();
+
+                await jailChannel.send({
+                    content: `${jailedMember}`,
+                    embeds: [
+                        embedFactory.createJailEmbed(embedFactory.JailEmbedType.JailChannelIntroduction, interaction.user, jailedMember, reason, jailChannel),
+                    ],
+                }).catch(err => console.error(err));
+
+                return interaction.reply({
+                    embeds: [
+                        embedFactory.createJailEmbed(embedFactory.JailEmbedType.JailCreated, interaction.user, jailedMember, reason, jailChannel),
+                    ],
+                    ephemeral: true,
+                });
+            }
+            catch (err) {
+                console.error(err);
+                return interaction.reply({
+                    embeds: [
+                        embedFactory.createErrorEmbed(errorMessages.internalError),
+                    ],
+                    ephemeral: true,
+                });
             }
         }
     },
