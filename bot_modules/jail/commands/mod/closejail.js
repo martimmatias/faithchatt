@@ -1,7 +1,8 @@
-const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
-const { parentId, errorMessages } = require("../../../../utils/variables.js");
+const { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } = require("discord.js");
+const { parentId, textId, errorMessages } = require("../../../../utils/variables.js");
 const jailModel = require("../../models/jailsystem.js");
 const embedFactory = require("../../../../utils/embedFactory.js");
+const jailSystem = require("../../utils/jail_system.js");
 const perm = PermissionsBitField.Flags;
 
 module.exports = {
@@ -24,6 +25,15 @@ module.exports = {
 
         // If we are in the jail category
         if (interaction.channel.parent.id === parentId.jail) {
+            if (interaction.channel.id === textId.jailedRules) {
+                return interaction.reply({
+                    embeds: [
+                        embedFactory.createErrorEmbed(errorMessages.notAllowedInRulesChannel),
+                    ],
+                    ephemeral: true,
+                });
+            }
+
             try {
                 const jailData = await jailModel.findOne({ "textChannel": interaction.channel.id });
                 if (jailData) {
@@ -39,6 +49,12 @@ module.exports = {
                     ephemeral: true,
                 });
             }
+
+            const closeLogEmbed = new EmbedBuilder()
+                .setDescription(`🔒 Jail ticket **${interaction.channel.name}** was closed by \`${interaction.user.tag}\`.`)
+                .setFooter({ text: `Moderator UID: ${interaction.user.id}` })
+                .setColor("#ffd100");
+            await jailSystem.logTranscript(interaction.channel, closeLogEmbed).catch(err => console.error(err));
 
             await interaction.reply(`**The channel closes in five seconds.**`).catch(err => console.log(err));
             // Reserve the five second timeout then delete
