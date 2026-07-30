@@ -5,6 +5,6 @@ module.exports = {
         .setName("membercount")
         .setDescription("Server members"),
     async execute(interaction) {
-        await interaction.reply(`Pong! You have ${interaction.client.ws.ping} ms.`);
+        await interaction.reply(`This server has **${interaction.guild.memberCount}** members.`);
     },
 };

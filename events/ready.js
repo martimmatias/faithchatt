@@ -1,5 +1,5 @@
 const config = require("../config.json");
-const { Routes, REST } = require("discord.js");
+const { Routes, REST, ActivityType } = require("discord.js");
 
 async function loadCommands(client) {
     const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -32,7 +32,7 @@ async function loadCommands(client) {
     setInterval(() => {
         if (index === arrayStatus.length) index = 0;
         const status = arrayStatus[index];
-        client.user.setActivity(status, { type: "PLAYING" });
+        client.user.setActivity(status, { type: ActivityType.Playing });
         index++;
     }, 5000);
     console.log("The bot is ready!");
