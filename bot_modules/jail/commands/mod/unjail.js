@@ -1,7 +1,8 @@
 const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
-const { parentId, errorMessages, rolesId } = require("../../../../utils/variables.js");
+const { parentId, errorMessages } = require("../../../../utils/variables.js");
 const jailModel = require("../../models/jailsystem.js");
 const embedFactory = require("../../../../utils/embedFactory.js");
+const jailSystem = require("../../utils/jail_system.js");
 const perm = PermissionsBitField.Flags;
 
 /**
@@ -51,8 +52,7 @@ module.exports = {
                     });
                 }
 
-                const mutedRole = interaction.guild.roles.cache.get(rolesId.muted);
-                jailedMember.roles.remove(mutedRole);
+                await jailSystem.restoreRoles(interaction.guild, jailedMember, jailedUserData.removedRoles);
 
                 await interaction.reply({
                     embeds: [
