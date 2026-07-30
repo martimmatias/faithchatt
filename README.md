@@ -9,9 +9,8 @@ Use <b>/help</b> to get started! You must be in the server.
 - Discord.js (v14)
 - dotenv
 - express
-- fs
 - moment
-- mongooose
+- mongoose
 
 <b>WARNING: </b>This will not work properly on other servers since the source code is exclusive for FaithChatt use.
 
