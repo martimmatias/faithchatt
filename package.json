@@ -33,6 +33,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "lint": "npx eslint ."
+    "lint": "npx eslint .",
+    "test:e2e": "node --test \"test/e2e/**/*.test.js\""
   }
 }

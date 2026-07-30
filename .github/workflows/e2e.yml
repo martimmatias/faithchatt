@@ -1,0 +1,70 @@
+# Runs the jail feature end-to-end test (test/e2e) against a real Discord
+# test server and MongoDB. Requires these repository secrets to be set
+# (Settings > Secrets and variables > Actions) - see test/e2e/README.md for
+# how to build the test server they point to:
+#   E2E_TOKEN, E2E_MONGO_URL, E2E_GUILD_ID, E2E_TARGET_USER_ID,
+#   E2E_ROLE_MEMBER_ID, E2E_ROLE_MUTED_ID, E2E_ROLE_MODERATOR_ID,
+#   E2E_ROLE_UNVERIFIED_ID, E2E_CATEGORY_JAIL_ID, E2E_CHANNEL_MOD_LOG_ID,
+#   E2E_CHANNEL_JAIL_LOG_ID
+# Until those secrets exist, this workflow reports success and skips the
+# actual test run - it never blocks a PR for contributors without access
+# to the test server. Pull requests from forks never see secrets, so they
+# always skip.
+name: Jail feature E2E
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "bot_modules/jail/**"
+      - "test/e2e/**"
+      - "utils/variables.js"
+  push:
+    branches: ["main"]
+    paths:
+      - "bot_modules/jail/**"
+      - "test/e2e/**"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Check test server secrets are configured
+        id: check
+        env:
+          TOKEN: ${{ secrets.E2E_TOKEN }}
+          MONGO_URL: ${{ secrets.E2E_MONGO_URL }}
+          E2E_GUILD_ID: ${{ secrets.E2E_GUILD_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$MONGO_URL" ] && [ -n "$E2E_GUILD_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install dependencies
+        if: steps.check.outputs.ready == 'true'
+        run: npm install
+      - name: Run jail lifecycle e2e test
+        if: steps.check.outputs.ready == 'true'
+        run: npm run test:e2e
+        env:
+          TOKEN: ${{ secrets.E2E_TOKEN }}
+          MONGO_URL: ${{ secrets.E2E_MONGO_URL }}
+          E2E_GUILD_ID: ${{ secrets.E2E_GUILD_ID }}
+          E2E_TARGET_USER_ID: ${{ secrets.E2E_TARGET_USER_ID }}
+          E2E_ROLE_MEMBER_ID: ${{ secrets.E2E_ROLE_MEMBER_ID }}
+          E2E_ROLE_MUTED_ID: ${{ secrets.E2E_ROLE_MUTED_ID }}
+          E2E_ROLE_MODERATOR_ID: ${{ secrets.E2E_ROLE_MODERATOR_ID }}
+          E2E_ROLE_UNVERIFIED_ID: ${{ secrets.E2E_ROLE_UNVERIFIED_ID }}
+          E2E_CATEGORY_JAIL_ID: ${{ secrets.E2E_CATEGORY_JAIL_ID }}
+          E2E_CHANNEL_MOD_LOG_ID: ${{ secrets.E2E_CHANNEL_MOD_LOG_ID }}
+          E2E_CHANNEL_JAIL_LOG_ID: ${{ secrets.E2E_CHANNEL_JAIL_LOG_ID }}
+      - name: Skipped - test server secrets not configured
+        if: steps.check.outputs.ready != 'true'
+        run: echo "E2E secrets not configured, skipping. See test/e2e/README.md to set up a test server."
